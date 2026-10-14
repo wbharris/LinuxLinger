@@ -3,4 +3,4 @@ Description=LinuxLinger live triage
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/linux-linger scan --problems-only -o %h/.local/share/linux-linger/last.txt
+ExecStart=/usr/bin/linux-linger -o %h/.local/share/linux-linger/last.html

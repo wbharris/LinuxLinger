@@ -7,4 +7,5 @@ Live leftovers on this Linux host. Collectors and reports only.
 - Do not install osquery, lsof, or ss. `linux-linger doctor` names missing tools. The join is native Python.
 - Do not scan a host other than the one running the CLI. No SSH fleet.
 - Cases under `cases/` and `$XDG_DATA_HOME/linux-linger/` are gitignored. Do not commit a live report.
-- Tests: `PYTHONPATH=src python3 -m pytest -q` from this repo. The repo root is the `LinuxLinger` directory, not the parent `Projects` directory. Fixtures under `tests/data/` — no live sudo in CI.
+- Public CLI is `linux-linger`, `-o`, `--json`, `--all`, `doctor`, `schedule`, `unschedule`. Do not add `ghost` / `channel` / `open` / `persist` / `join` as commands.
+- Tests: `PYTHONPATH=src python3 -m pytest -q` from this repo. The repo root is the `LinuxLinger` directory, not the parent `Projects` directory. Fixtures under `tests/data/` — no live sudo in CI. `--fixture` is a test hook, hidden from `--help`.

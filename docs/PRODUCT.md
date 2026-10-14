@@ -35,22 +35,21 @@ this Linux host
 3. Classify  critical | high | medium | info | skip
      │
      ▼
-4. Report  text | markdown | json | html
-     ├─ guide     read-only next steps
-     ├─ ignore    hide a pid/unit/path
-     └─ schedule  systemd --user timer
+4. Report  text (default) or `-o case.html` / `--json`
+     └─ schedule  hourly systemd --user timer
 ```
 
 ## Commands
 
 | Command | Behavior |
 |---------|----------|
-| `scan` | All five checks. Default if no subcommand. `--check` to subset. `--notify` for a desktop alert. `--fixture FILE` replays a collector JSON |
-| `ghost` `channel` `open` `persist` `join` | Same as `scan --check NAME` |
+| `linux-linger` | All five checks. Default text is leftovers only (`critical`/`high`/`medium`) |
+| `-o FILE` | Write a case; `.html` `.json` `.md` pick the format |
+| `--json` | JSON on stdout |
+| `--all` | Include info summaries |
 | `doctor` | Name missing tools. Skip, do not install |
-| `guide` | Numbered read-only next steps from a fresh scan |
-| `ignore add\|remove\|list` | Persist ids that should not count as problems |
-| `schedule install\|status\|remove` | Hourly/daily/weekly scan; optional `--notify` |
+| `schedule` | Hourly user timer; notify when leftovers appear |
+| `unschedule` | Stop the timer |
 
 ## Classification
 
@@ -58,8 +57,8 @@ this Linux host
 |----------|------|
 | `critical` | Ghost PID with a non-loopback remote socket (the join) |
 | `high` | Ghost under `/tmp`, `/dev/shm`, `/var/tmp`, `/home`, `/root`; or a local unit whose `ExecStart=` is there; or a channel on a ghost PID |
-| `medium` | Other deleted binaries; unlinked regular files that are not logs; local unit mtime within `--recent-days` (default 14); systemd linger users |
-| `info` | Deleted binary under `/usr` `/bin` `/lib` (package upgrade until restart); logrotate, memfd, and browser tmp leftovers; ordinary remote sockets. A full scan collapses those to one summary row per check. `linux-linger channel`, `open`, or `persist` prints every row |
+| `medium` | Other deleted binaries; unlinked regular files that are not logs; local unit mtime within 14 days; systemd linger users |
+| `info` | Deleted binary under `/usr` `/bin` `/lib` (package upgrade until restart); logrotate, memfd, and browser tmp leftovers; ordinary remote sockets collapsed to one summary row. Hidden unless `--all` |
 | `skip` | Ignore list |
 
 ## Collectors

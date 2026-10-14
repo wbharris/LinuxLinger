@@ -14,49 +14,54 @@ def test_help_and_version(capsys):
     except SystemExit as e:
         assert e.code == 0
     out = capsys.readouterr().out
-    assert "ghost" in out.lower()
-    assert "schedule" in out.lower()
-    assert "doctor" in out.lower()
-    try:
-        main(["scan", "--help"])
-    except SystemExit as e:
-        assert e.code == 0
-    scan_help = capsys.readouterr().out
-    assert "join" in scan_help.lower()
+    assert "linux-linger doctor" in out
+    assert "linux-linger schedule" in out
+    assert "linux-linger unschedule" in out
+    assert "--check" not in out
+    assert "unschedule" in out
 
 
 def test_scan_fixture_json(capsys):
-    code = main(["scan", "--fixture", str(DATA / "critical.json"), "--json", "--problems-only"])
+    code = main(["--fixture", str(DATA / "critical.json"), "--json"])
     assert code == 1
     out = capsys.readouterr().out
     assert "join:4242" in out
     assert "critical" in out
+    assert "open:summary" not in out
 
 
-def test_ghost_subcommand_filters(capsys):
-    code = main(["ghost", "--fixture", str(DATA / "critical.json"), "--json"])
+def test_all_includes_info(capsys):
+    code = main(["--fixture", str(DATA / "critical.json"), "--json", "--all"])
     assert code == 1
     out = capsys.readouterr().out
-    assert "ghost:4242" in out
-    assert "linger:alice" not in out
+    assert "open:summary" in out
+
+
+def test_html_output_extension(tmp_path, capsys):
+    dest = tmp_path / "case.html"
+    code = main(["--fixture", str(DATA / "critical.json"), "-o", str(dest)])
+    assert code == 1
+    html = dest.read_text(encoding="utf-8")
+    assert "<h1>LinuxLinger</h1>" in html
+    assert "join" in html
+    out = capsys.readouterr().out
+    assert "LinuxLinger" in out
+    assert "<h1>" not in out
 
 
 def test_clean_fixture_exit_zero(capsys):
-    code = main(["scan", "--fixture", str(DATA / "clean.json")])
+    code = main(["--fixture", str(DATA / "clean.json")])
     assert code == 0
     out = capsys.readouterr().out
     assert "LinuxLinger" in out
+    assert "No matching findings." in out
 
 
-def test_recent_days_must_be_positive(capsys):
-    try:
-        code = main(["scan", "--recent-days", "0"])
-    except SystemExit as e:
-        assert e.code == 2
-    else:
-        assert code == 2
+def test_unknown_job_args(capsys):
+    code = main(["doctor", "--json"])
+    assert code == 2
     err = capsys.readouterr().err
-    assert ">= 1" in err or "invalid" in err.lower()
+    assert "no extra arguments" in err
 
 
 def test_renderers_and_guide():

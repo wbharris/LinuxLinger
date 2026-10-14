@@ -2,7 +2,7 @@
 Type=Application
 Name=LinuxLinger
 Comment=Live leftovers on this Linux host
-Exec=sh -c 'dir="${XDG_DATA_HOME:-$HOME/.local/share}/linux-linger"; mkdir -p "$dir"; linux-linger --html -o "$dir/last.html"; xdg-open "$dir/last.html"'
+Exec=sh -c 'dir="${XDG_DATA_HOME:-$HOME/.local/share}/linux-linger"; mkdir -p "$dir"; linux-linger -o "$dir/last.html"; xdg-open "$dir/last.html"'
 Terminal=false
 Categories=System;Monitor;Security;
 StartupNotify=true

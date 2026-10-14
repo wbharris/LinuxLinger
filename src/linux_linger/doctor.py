@@ -15,7 +15,7 @@ def doctor_lines() -> list[str]:
         ("systemctl", bool(which("systemctl")), which("systemctl") or "optional for persist"),
         ("loginctl", bool(which("loginctl")), which("loginctl") or "optional for linger"),
         ("osqueryi", bool(which("osqueryi")), which("osqueryi") or "optional; join is native"),
-        ("notify-send", bool(which("notify-send")), which("notify-send") or "optional --notify"),
+        ("notify-send", bool(which("notify-send")), which("notify-send") or "optional for schedule"),
     ]
     euid = os.geteuid()
     if euid == 0:

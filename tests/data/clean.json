@@ -1,0 +1,24 @@
+{
+  "hostname": "cleanbox",
+  "os": "Debian GNU/Linux",
+  "kernel": "6.16.0",
+  "scanned_at": "2026-10-14T12:00:00Z",
+  "ghosts": [],
+  "sockets": [
+    {
+      "pid": 1204,
+      "proto": "tcp",
+      "state": "ESTAB",
+      "local": "10.0.0.5:22",
+      "remote": "198.51.100.8:22",
+      "name": "sshd"
+    }
+  ],
+  "unlinked": [],
+  "units": [],
+  "linger_users": [],
+  "tools_used": ["fixture"],
+  "tools_skipped": [],
+  "notes": [],
+  "incomplete": false
+}

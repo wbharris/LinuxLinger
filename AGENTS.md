@@ -1,0 +1,10 @@
+# LinuxLinger
+
+Live leftovers on this Linux host. Collectors and reports only.
+
+- Do not add kill, `rm`, `systemctl disable`, quarantine, iptables/nft isolate, or any write to the target host beyond the case file, ignore list, and user timer units.
+- Do not add an HTTP client, IP reputation, or a GeoIP lookup. Remote addresses stay as the host reported them.
+- Do not install osquery, lsof, or ss. `linux-linger doctor` names missing tools. The join is native Python.
+- Do not scan a host other than the one running the CLI. No SSH fleet.
+- Cases under `cases/` and `$XDG_DATA_HOME/linux-linger/` are gitignored. Do not commit a live report.
+- Tests: `PYTHONPATH=src python3 -m pytest -q` from this repo. The repo root is the `LinuxLinger` directory, not the parent `Projects` directory. Fixtures under `tests/data/` — no live sudo in CI.

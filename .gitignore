@@ -1,0 +1,16 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+cases/
+*.md.bak
+tests/last-results.txt
+tests/last-results.json
+tests/last-results.html
+tests/last-results.png

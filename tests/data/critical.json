@@ -1,0 +1,75 @@
+{
+  "hostname": "box",
+  "os": "Debian GNU/Linux trixie",
+  "kernel": "6.16.0",
+  "scanned_at": "2026-10-14T12:00:00Z",
+  "ghosts": [
+    {
+      "pid": 4242,
+      "exe": "/tmp/.x (deleted)",
+      "cmdline": "/tmp/.x --daemon",
+      "comm": ".x",
+      "uid": 0
+    },
+    {
+      "pid": 99,
+      "exe": "/usr/sbin/nginx (deleted)",
+      "cmdline": "nginx: master process",
+      "comm": "nginx",
+      "uid": 0
+    }
+  ],
+  "sockets": [
+    {
+      "pid": 4242,
+      "proto": "tcp",
+      "state": "ESTAB",
+      "local": "10.0.0.5:4444",
+      "remote": "203.0.113.9:443",
+      "name": ".x"
+    },
+    {
+      "pid": 1204,
+      "proto": "tcp",
+      "state": "ESTAB",
+      "local": "10.0.0.5:22",
+      "remote": "198.51.100.8:53122",
+      "name": "sshd"
+    }
+  ],
+  "unlinked": [
+    {
+      "pid": 88,
+      "command": "rsyslogd",
+      "fd": "7w",
+      "nlink": 0,
+      "size": 1048576,
+      "name": "/var/log/syslog (deleted)",
+      "type": "REG"
+    },
+    {
+      "pid": 4242,
+      "command": ".x",
+      "fd": "3",
+      "nlink": 0,
+      "size": 4096,
+      "name": "/tmp/.x.dat (deleted)",
+      "type": "REG"
+    }
+  ],
+  "units": [
+    {
+      "name": "evil.service",
+      "state": "enabled",
+      "path": "/etc/systemd/system/evil.service",
+      "mtime": "2026-10-13T04:00:00Z",
+      "exec_start": "/tmp/pwn",
+      "scope": "system"
+    }
+  ],
+  "linger_users": ["alice"],
+  "tools_used": ["fixture"],
+  "tools_skipped": ["osqueryi"],
+  "notes": [],
+  "incomplete": false
+}

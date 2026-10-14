@@ -1,0 +1,31 @@
+[project]
+name = "linux-linger"
+version = "0.1.0"
+description = "LinuxLinger™ — live Linux host triage: deleted-but-running binaries, sockets, unlinked files, and reboot persistence."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "wbharris" }]
+keywords = ["linux", "incident-response", "triage", "proc", "systemd"]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/wbharris/LinuxLinger"
+Repository = "https://github.com/wbharris/LinuxLinger"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+linux-linger = "linux_linger.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

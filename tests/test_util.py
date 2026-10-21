@@ -24,6 +24,28 @@ def test_data_dir_tightens_existing_mode(tmp_path, monkeypatch):
     assert linger.stat().st_mode & 0o777 == 0o700
 
 
+def test_data_dir_rejects_operator_owned_shared_parent(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    tmp_path.chmod(0o777)
+    with pytest.raises(PermissionError, match="writable by other users"):
+        data_dir()
+
+
+def test_data_dir_rejects_group_writable_parent(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    tmp_path.chmod(0o775)
+    with pytest.raises(PermissionError, match="writable by other users"):
+        data_dir()
+
+
+def test_data_dir_allows_sticky_shared_parent(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    tmp_path.chmod(0o1777)
+    path = data_dir()
+    assert path.is_dir()
+    assert path.stat().st_mode & 0o777 == 0o700
+
+
 def test_data_dir_rejects_symlink(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
     real = tmp_path / "real"

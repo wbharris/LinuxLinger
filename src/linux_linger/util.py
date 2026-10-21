@@ -105,14 +105,18 @@ def ensure_private_dir(path: Path) -> Path:
 
 
 def _require_safe_parent(path: Path) -> None:
+    """Refuse a parent whose directory entries other users can replace.
+
+    Owner-only and 0755 parents are fine. Group/world-writable parents are
+    not, even when owned by the operator, unless the sticky bit is set so
+    others cannot rename ``linux-linger``.
+    """
     parent = path.parent
     st = os.stat(parent)
-    if st.st_uid == os.geteuid():
-        return
-    if st.st_mode & 0o022:
-        raise PermissionError(
-            f"{parent} is not owned by you and is writable by other users"
-        )
+    if not stat.S_ISDIR(st.st_mode):
+        raise PermissionError(f"{parent} is not a directory")
+    if st.st_mode & 0o022 and not (st.st_mode & stat.S_ISVTX):
+        raise PermissionError(f"{parent} is writable by other users")
 
 
 def write_private_file(path: Path, text: str, *, mode: int = 0o600) -> Path:

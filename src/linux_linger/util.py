@@ -69,10 +69,8 @@ def endpoint_host(addr: str) -> str:
         if end != -1:
             return s[1:end].lower()
     if s.count(":") == 1:
-        host, _, port = s.partition(":")
-        if port.isdigit():
-            return host.lower()
-        return s.lower()
+        host, _, _port = s.partition(":")
+        return host.lower()
     return s.lower()
 
 

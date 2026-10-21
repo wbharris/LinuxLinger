@@ -47,6 +47,7 @@ this Linux host
 | `-o FILE` | Write a case; `.html` `.json` `.md` pick the format |
 | `--json` | JSON on stdout |
 | `--all` | Include info summaries |
+| `--redact` | Mask command-line arguments, `/home/<user>/` names, and linger usernames |
 | `doctor` | Name missing tools. Skip, do not install |
 | `schedule` | Hourly user timer; notify when leftovers appear. Exit 1 if reload or enable fails |
 | `unschedule` | Stop the timer and remove the user units. Does not run `systemctl disable`. Exit 1 if stop or reload fails |
@@ -71,7 +72,7 @@ this Linux host
 | persist | walk `/etc/systemd/system`, `~/.config/systemd/user` | `systemctl`, `loginctl`, `/var/lib/systemd/linger` |
 | join | ghost + channel | `osqueryi` is never required |
 
-Missing tools are **skipped and named**, not a crash. osquery is optional forever; the join is native Python.
+Missing tools are **skipped and named**, not a crash. osquery is optional forever; the join is native Python. Linux `/proc` is required. See [`COMPAT.md`](COMPAT.md).
 
 ## Out of scope
 
@@ -80,3 +81,5 @@ Kill, `rm`, `systemctl disable`, network isolate, remote IP reputation, fleet SS
 ## Cases
 
 JSON/HTML under `cases/` or `$XDG_DATA_HOME/linux-linger/` stay off git. The data directory is created `0700` and owned by the operator; reports, `ignore.txt`, and `run.sh` are owner-only (`0600` / `0700`) and are not written through a symlink. Any group- or world-writable ancestor of that path without the sticky bit is refused. A reboot drops ghosts and open fds. Keep the case.
+
+Reports contain command lines, paths, and usernames. File mode `0600` protects the case on disk. `--json` and the default text on stdout are not permission-controlled; they can appear in terminal logs and pipes. `--redact` is opt-in before you share a transcript. `schedule` writes an unredacted `last.html` into the private data dir.

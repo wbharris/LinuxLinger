@@ -260,11 +260,13 @@ def parse_lsof(text: str) -> list[UnlinkedFile]:
     if not lines:
         return []
     header = lines[0]
-    body = lines[1:] if header.upper().startswith("COMMAND") else lines
+    has_header = header.upper().startswith("COMMAND")
+    body = lines[1:] if has_header else lines
+    name_at = _lsof_name_column(header) if has_header else -1
     rows: list[UnlinkedFile] = []
     for line in body:
-        parts = line.split()
-        if len(parts) < 8:
+        parts, name = _lsof_split(line, name_at)
+        if len(parts) < 5:
             continue
         command, pid_s, _user, fd, typ = parts[0], parts[1], parts[2], parts[3], parts[4]
         try:
@@ -273,8 +275,7 @@ def parse_lsof(text: str) -> list[UnlinkedFile]:
             continue
         nlink = 0
         size: int | None = None
-        name = ""
-        if len(parts) >= 9:
+        if len(parts) >= 8:
             try:
                 size = int(parts[6])
             except ValueError:
@@ -283,9 +284,8 @@ def parse_lsof(text: str) -> list[UnlinkedFile]:
                 nlink = int(parts[7])
             except ValueError:
                 nlink = 0
-            name = " ".join(parts[9:]) if len(parts) > 9 else " ".join(parts[8:])
-        else:
-            name = " ".join(parts[7:])
+        elif len(parts) >= 7:
+            name = name or " ".join(parts[7:])
         if nlink > 0:
             continue
         rows.append(
@@ -300,6 +300,23 @@ def parse_lsof(text: str) -> list[UnlinkedFile]:
             )
         )
     return rows
+
+
+def _lsof_name_column(header: str) -> int:
+    up = header.upper()
+    idx = up.rfind("NAME")
+    return idx if idx >= 0 else -1
+
+
+def _lsof_split(line: str, name_at: int) -> tuple[list[str], str]:
+    if name_at > 0 and len(line) > name_at and line[name_at - 1].isspace():
+        return line[:name_at].split(), line[name_at:].strip()
+    parts = line.split()
+    if len(parts) > 9:
+        return parts[:9], " ".join(parts[9:])
+    if len(parts) > 8:
+        return parts[:8], " ".join(parts[8:])
+    return parts, " ".join(parts[7:]) if len(parts) > 7 else ""
 
 
 def _keep_socket(row: SocketRow) -> bool:

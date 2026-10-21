@@ -1,7 +1,14 @@
 from pathlib import Path
 
-from linux_linger.collect import exec_argv_tokens, parse_exec_start, parse_lsof, parse_ss
 from linux_linger.classify import is_loopback
+from linux_linger.collect import (
+    _keep_socket,
+    exec_argv_tokens,
+    parse_exec_start,
+    parse_lsof,
+    parse_ss,
+)
+from linux_linger.models import SocketRow
 
 DATA = Path(__file__).parent / "data"
 
@@ -61,3 +68,46 @@ def test_parse_lsof_nlink_zero_only():
     assert "/tmp/.x.dat (deleted)" in names
     assert all(r.nlink == 0 for r in rows)
     assert not any("sshd_config" in r.name for r in rows)
+
+
+def test_parse_lsof_keeps_spaces_in_name():
+    rows = parse_lsof((DATA / "lsof-spaces.txt").read_text(encoding="utf-8"))
+    names = {r.name for r in rows}
+    assert "/tmp/my file.dat (deleted)" in names
+    assert "/home/alice/app data/cache.bin (deleted)" in names
+    assert not any("sshd_config" in r.name for r in rows)
+
+
+def test_parse_ss_variations_and_keep_socket():
+    rows = parse_ss((DATA / "ss-variations.txt").read_text(encoding="utf-8"))
+    by_pid = {r.pid: r for r in rows if r.pid is not None}
+    assert by_pid[4242].remote == "203.0.113.9:443"
+    assert by_pid[9].name == "web app"
+    mapped = [r for r in rows if "ffff" in r.local]
+    assert mapped
+    assert is_loopback(mapped[0].remote)
+    kept = [r for r in rows if _keep_socket(r)]
+    states = {r.state.upper() for r in kept}
+    assert "LISTEN" not in states
+    assert "TIME-WAIT" not in states
+    assert any(r.pid == 4242 for r in kept)
+
+
+def test_keep_socket_tcp_udp():
+    tcp = SocketRow(pid=1, proto="tcp", state="ESTAB", local="1:1", remote="203.0.113.9:443")
+    listen = SocketRow(pid=1, proto="tcp", state="LISTEN", local="0.0.0.0:22", remote="0.0.0.0:*")
+    udp_open = SocketRow(pid=1, proto="udp", state="UNCONN", local="1:53", remote="203.0.113.9:53")
+    udp_star = SocketRow(pid=1, proto="udp", state="UNCONN", local="0.0.0.0:68", remote="0.0.0.0:*")
+    assert _keep_socket(tcp)
+    assert not _keep_socket(listen)
+    assert _keep_socket(udp_open)
+    assert not _keep_socket(udp_star)
+
+
+def test_parse_exec_start_oneshot_fixture():
+    text = (DATA / "unit-oneshot.service").read_text(encoding="utf-8")
+    parsed = parse_exec_start(text)
+    tokens = exec_argv_tokens(parsed)
+    assert "/usr/bin/true" in tokens
+    assert "/tmp/quoted pwn" in tokens
+    assert "/bin/true" in tokens

@@ -1,0 +1,5 @@
+COMMAND     PID USER   FD   TYPE DEVICE SIZE/OFF NLINK NODE                     NAME
+rsyslogd 88 root 7w REG 8,1 1048576 0 99                                        /var/log/syslog (deleted)
+.x 4242 root 3r REG 8,1 4096 0 100                                              /tmp/my file.dat (deleted)
+sshd 1204 root 3u REG 8,1 128 2 101                                             /etc/ssh/sshd_config
+python3 5001 alice 4u REG 8,1 512 0 102                                         /home/alice/app data/cache.bin (deleted)

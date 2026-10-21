@@ -20,7 +20,9 @@ linux-linger schedule        # hourly background scan
 linux-linger unschedule      # stop the timer
 ```
 
-`--json` prints JSON. `--all` includes info summaries (package-upgrade ghosts, logrotate, ordinary sessions). Root (or `sudo -n`) sees other users' processes.
+`--json` prints JSON. `--all` includes info summaries (package-upgrade ghosts, logrotate, ordinary sessions). `--redact` masks command-line arguments, home usernames, and linger names. Root (or `sudo -n`) sees other users' processes.
+
+Reports include process command lines, paths, and usernames. On-disk cases are owner-only (`0600`). `--json` and the default text go to stdout and can land in terminal scrollback, CI logs, or a pipe. Use `--redact` before sharing a transcript. Scheduled `last.html` is a full (unredacted) case in the private data dir.
 
 | Severity | Meaning |
 |----------|---------|
@@ -31,13 +33,15 @@ linux-linger unschedule      # stop the timer
 
 ## Install
 
+Python 3.11+. No extra runtime packages. See [`docs/INSTALL.md`](docs/INSTALL.md) for tagged installs, upgrade, and uninstall. Environments: [`docs/COMPAT.md`](docs/COMPAT.md).
+
 ```bash
 git clone https://github.com/wbharris/LinuxLinger.git
 cd LinuxLinger
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 ```
 
-Python 3.11+. No extra runtime packages. `PYTHONPATH=src` works without an install:
+`PYTHONPATH=src` works without an install:
 
 ```bash
 PYTHONPATH=src python3 -m linux_linger --version
@@ -52,6 +56,8 @@ PYTHONPATH=src python3 -m linux_linger --version
 ```bash
 PYTHONPATH=src python3 -m pytest -q
 ```
+
+GitHub Actions runs that suite on Python 3.11–3.13 and builds an sdist/wheel. `v*` tags upload those artifacts to a GitHub Release.
 
 Live sudo is not required. Fixtures under `tests/data/` replay collector JSON.
 

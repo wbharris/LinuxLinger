@@ -18,6 +18,7 @@ def test_help_and_version(capsys):
     assert "linux-linger schedule" in out
     assert "linux-linger unschedule" in out
     assert "--check" not in out
+    assert "--redact" in out
     assert "unschedule" in out
 
 

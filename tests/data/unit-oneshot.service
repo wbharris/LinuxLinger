@@ -1,0 +1,9 @@
+[Unit]
+Description=oneshot leftover
+
+[Service]
+Type=oneshot
+Environment=FOO=bar
+ExecStart=-/usr/bin/true
+ExecStart=/bin/sh -c "/tmp/quoted pwn"
+ExecStartPre=/bin/true

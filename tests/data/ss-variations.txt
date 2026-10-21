@@ -1,0 +1,7 @@
+tcp   ESTAB      0      0      10.0.0.5:4444      203.0.113.9:443 users:((".x",pid=4242,fd=4))
+tcp   LISTEN     0      128    0.0.0.0:22         0.0.0.0:* users:(("sshd",pid=1204,fd=3))
+tcp   TIME-WAIT  0      0      10.0.0.5:54321     198.51.100.8:443
+tcp   ESTAB      0      0      10.0.0.5:22        198.51.100.8:53122 users:(("sshd",pid=1204,fd=4))
+tcp   ESTAB      0      0      [::ffff:127.0.0.1]:8080 [::ffff:127.0.0.1]:45000 users:(("python3",pid=88,fd=3))
+tcp   ESTAB      0      0      10.0.0.5:9         203.0.113.9:9 users:(("web app",pid=9,fd=1))
+udp   UNCONN     0      0      0.0.0.0:68         0.0.0.0:*

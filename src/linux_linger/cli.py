@@ -7,6 +7,7 @@ from pathlib import Path
 from linux_linger import __version__
 from linux_linger.doctor import doctor_text
 from linux_linger.report import render_html, render_json, render_markdown, render_text
+from linux_linger.redact import redact_report
 from linux_linger.scan import scan
 from linux_linger.util import write_private_file
 from linux_linger.schedule import install as schedule_install
@@ -41,6 +42,11 @@ def _scan_parser() -> argparse.ArgumentParser:
     parser.add_argument("-o", "--output", type=Path, help="Write the case here (.html .json .md)")
     parser.add_argument("--json", action="store_true", help="JSON on stdout")
     parser.add_argument("--all", action="store_true", help="Include info summaries")
+    parser.add_argument(
+        "--redact",
+        action="store_true",
+        help="Mask command-line arguments, home usernames, and linger names",
+    )
     parser.add_argument(
         "--fixture",
         type=Path,
@@ -78,6 +84,8 @@ def _job_help(name: str) -> str:
 
 def _cmd_scan(args: argparse.Namespace) -> int:
     report = scan(fixture=args.fixture)
+    if args.redact:
+        redact_report(report)
     problems_only = not args.all
     fmt = _format(args)
     if args.output:

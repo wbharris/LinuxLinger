@@ -7,11 +7,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from linux_linger.models import GhostProc, Snapshot, SocketRow, UnlinkedFile, UnitFile, utc_now
-from linux_linger.util import detect_family, hostname, kernel, os_pretty, run_privileged, which
+from linux_linger.util import detect_family, endpoint_host, hostname, kernel, os_pretty, run_privileged, which
 
 USER_PID_RE = re.compile(r'\("(?P<name>[^"]+)",pid=(?P<pid>\d+)')
 PID_ONLY_RE = re.compile(r"pid=(\d+)")
-EXEC_START_RE = re.compile(r"^ExecStart(?:\w*)=(?:-\w+\s+)*(.+)$", re.MULTILINE)
+EXEC_START_KEY_RE = re.compile(r"^ExecStart\w*$")
 SUSPICIOUS_EXEC = ("/tmp/", "/var/tmp/", "/dev/shm/", "/home/", "/root/", "/run/user/")
 
 
@@ -308,21 +308,9 @@ def _keep_socket(row: SocketRow) -> bool:
     if proto.startswith("tcp"):
         return state in {"ESTAB", "ESTABLISHED"}
     if proto.startswith("udp"):
-        host = _peer_host(row.remote)
+        host = endpoint_host(row.remote)
         return host not in {"*", "0.0.0.0", "::", ""}
     return state in {"ESTAB", "ESTABLISHED"}
-
-
-def _peer_host(addr: str) -> str:
-    if not addr:
-        return ""
-    if addr.startswith("["):
-        end = addr.find("]")
-        if end != -1:
-            return addr[1:end]
-    if addr.count(":") == 1:
-        return addr.rsplit(":", 1)[0]
-    return addr
 
 
 def _pid_dirs(proc_root: Path):
@@ -452,10 +440,98 @@ def _exec_start(path: Path) -> str:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
-    found = EXEC_START_RE.findall(text)
-    if not found:
-        return ""
-    return found[0].strip()
+    return parse_exec_start(text)
+
+
+def parse_exec_start(text: str) -> str:
+    """Collect ExecStart* command text from a unit file.
+
+    Handles ``\\`` line continuations, multiple ExecStart* keys, and
+    systemd command prefixes (``-``, ``@``, ``+``, ``!``, ``:``). Quoted
+    arguments are kept so ``exec_argv_tokens()`` can split them.
+
+    Specifiers (``%h``), drop-ins, and C-style escapes are not expanded.
+    """
+    commands: list[str] = []
+    for line in _unfold_unit(text).splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith("#") or raw.startswith(";"):
+            continue
+        eq = raw.find("=")
+        if eq < 1:
+            continue
+        key = raw[:eq].strip()
+        if not EXEC_START_KEY_RE.fullmatch(key):
+            continue
+        value = _strip_exec_prefixes(raw[eq + 1 :].strip())
+        if value:
+            commands.append(value)
+    return " ".join(commands)
+
+
+def exec_argv_tokens(value: str) -> list[str]:
+    """Split an ExecStart value with systemd-style single/double quotes."""
+    tokens: list[str] = []
+    buf: list[str] = []
+    quote = ""
+    i = 0
+    n = len(value)
+    while i < n:
+        c = value[i]
+        if quote == "'":
+            if c == "'":
+                quote = ""
+            else:
+                buf.append(c)
+        elif quote == '"':
+            if c == "\\":
+                i += 1
+                if i < n:
+                    buf.append(value[i])
+            elif c == '"':
+                quote = ""
+            else:
+                buf.append(c)
+        elif c in " \t":
+            if buf:
+                tokens.append("".join(buf))
+                buf = []
+        elif c in "'\"":
+            quote = c
+        elif c == "\\":
+            i += 1
+            if i < n:
+                buf.append(value[i])
+        else:
+            buf.append(c)
+        i += 1
+    if buf:
+        tokens.append("".join(buf))
+    return tokens
+
+
+def _unfold_unit(text: str) -> str:
+    lines: list[str] = []
+    buf = ""
+    for raw in text.splitlines():
+        line = raw.rstrip("\r")
+        if buf:
+            line = buf + line.lstrip()
+            buf = ""
+        if line.endswith("\\"):
+            buf = line[:-1]
+            continue
+        lines.append(line)
+    if buf:
+        lines.append(buf)
+    return "\n".join(lines)
+
+
+def _strip_exec_prefixes(value: str) -> str:
+    i = 0
+    while i < len(value) and value[i] in "+@:-!|":
+        i += 1
+    return value[i:].lstrip()
 
 
 def _iso_mtime(path: Path) -> str:

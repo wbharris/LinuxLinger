@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from linux_linger.classify import classify
+from linux_linger.classify import classify, is_loopback
 from linux_linger.models import Snapshot
 from linux_linger.scan import scan
+from linux_linger.util import endpoint_host
 
 DATA = Path(__file__).parent / "data"
 
@@ -28,6 +29,18 @@ def test_clean_fixture_has_no_problems():
     report = scan(fixture=DATA / "clean.json")
     assert report.problems() == []
     assert any(f.id == "channel:summary" for f in report.findings)
+
+
+def test_fixture_scan_ignores_live_ignore_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    ignore = tmp_path / "linux-linger"
+    ignore.mkdir()
+    (ignore / "ignore.txt").write_text("pid:4242\nunit:evil.service\n", encoding="utf-8")
+    report = scan(fixture=DATA / "critical.json")
+    by_id = {f.id: f for f in report.findings}
+    assert by_id["join:4242"].severity == "critical"
+    assert by_id["ghost:4242"].severity == "high"
+    assert by_id["persist:system:evil.service"].severity == "high"
 
 
 def test_chrome_tmp_unlinked_is_info():
@@ -102,3 +115,50 @@ def test_channel_only_prints_each_socket():
     report = classify(snap, checks=["channel"])
     assert any(f.id.startswith("channel:1:") for f in report.findings)
     assert not any(f.id == "channel:summary" for f in report.findings)
+
+
+def test_endpoint_host_ipv6_and_mapped():
+    cases = {
+        "[::1]:443": "::1",
+        "::1": "::1",
+        "[2001:db8::1]:443": "2001:db8::1",
+        "2001:db8::1": "2001:db8::1",
+        "[::ffff:127.0.0.1]:443": "::ffff:127.0.0.1",
+        "::ffff:127.0.0.1": "::ffff:127.0.0.1",
+        "127.0.0.1:443": "127.0.0.1",
+        "203.0.113.9:443": "203.0.113.9",
+    }
+    for addr, host in cases.items():
+        assert endpoint_host(addr) == host, addr
+    assert is_loopback("[::1]:443")
+    assert is_loopback("::1")
+    assert is_loopback("::ffff:127.0.0.1")
+    assert is_loopback("[::ffff:127.0.0.1]:80")
+    assert not is_loopback("2001:db8::1")
+    assert not is_loopback("[2001:db8::1]:443")
+    assert not is_loopback("203.0.113.9:443")
+
+
+def test_quoted_execstart_is_high():
+    snap = Snapshot.from_dict(
+        {
+            "hostname": "box",
+            "os": "Debian",
+            "kernel": "1",
+            "scanned_at": "2026-10-14T00:00:00Z",
+            "units": [
+                {
+                    "name": "quoted.service",
+                    "state": "enabled",
+                    "path": "/etc/systemd/system/quoted.service",
+                    "mtime": "2026-10-13T04:00:00Z",
+                    "exec_start": '"/tmp/quoted pwn" --flag',
+                    "scope": "system",
+                }
+            ],
+        }
+    )
+    report = classify(snap, checks=["persist"])
+    finding = report.findings[0]
+    assert finding.severity == "high"
+    assert finding.unit == "quoted.service"

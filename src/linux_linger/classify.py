@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 from datetime import datetime, timezone
 from typing import Iterable
 
+from linux_linger.collect import exec_argv_tokens
 from linux_linger.models import (
     CHECKS,
     Check,
@@ -15,6 +17,7 @@ from linux_linger.models import (
     UnlinkedFile,
     UnitFile,
 )
+from linux_linger.util import endpoint_host
 
 SUSPICIOUS_PREFIXES = (
     "/tmp/",
@@ -91,16 +94,17 @@ def exe_path(exe: str) -> str:
 
 
 def is_loopback(addr: str) -> bool:
-    host = _host(addr)
+    host = endpoint_host(addr)
     if host in LOOPBACK_HOSTS:
         return True
     if host.startswith("127."):
         return True
-    if host.endswith("::1"):
-        return True
     if host.startswith("::ffff:127."):
         return True
-    return False
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def is_suspicious_path(path: str) -> bool:
@@ -290,9 +294,7 @@ def _persist(
     now = datetime.now(timezone.utc)
     for u in units:
         exec_bad = bool(u.exec_start) and any(
-            tok.startswith(prefix) or f" {prefix}" in f" {u.exec_start}"
-            for prefix in SUSPICIOUS_PREFIXES
-            for tok in u.exec_start.split()
+            is_suspicious_path(tok) for tok in exec_argv_tokens(u.exec_start)
         )
         session_unit = u.name.startswith("app-") and "@autostart" in u.name
         recent = _is_recent(u.mtime, now, recent_days) and not session_unit
@@ -377,20 +379,6 @@ def _ghost_suggest(g: GhostProc, remotes: list[SocketRow]) -> list[str]:
     if remotes:
         bits.append("this pid also has a remote socket (see join)")
     return bits
-
-
-def _host(addr: str) -> str:
-    if not addr:
-        return ""
-    if addr.startswith("["):
-        end = addr.find("]")
-        if end != -1:
-            return addr[1:end].lower()
-    if addr.count(":") == 1:
-        return addr.rsplit(":", 1)[0].lower()
-    if addr.count(":") > 1:
-        return addr.rsplit(":", 1)[0].lower()
-    return addr.lower()
 
 
 def _fd_num(fd: str) -> str:

@@ -53,6 +53,28 @@ def detect_family() -> str:
     return platform.system().lower() or "unknown"
 
 
+def endpoint_host(addr: str) -> str:
+    """Host part of an ss-style local/remote endpoint.
+
+    Bracketed IPv6 uses the text inside ``[...]``. Unbracketed IPv6 (more
+    than one colon) is the whole address; a port belongs in brackets, as
+    ``ss`` prints ``[::1]:443``. A single colon is IPv4 or a name plus port.
+    """
+    if not addr:
+        return ""
+    s = addr.strip()
+    if s.startswith("["):
+        end = s.find("]")
+        if end != -1:
+            return s[1:end].lower()
+    if s.count(":") == 1:
+        host, _, port = s.partition(":")
+        if port.isdigit():
+            return host.lower()
+        return s.lower()
+    return s.lower()
+
+
 def data_dir() -> Path:
     base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
     path = Path(base) / "linux-linger"

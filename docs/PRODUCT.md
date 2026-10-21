@@ -49,7 +49,7 @@ this Linux host
 | `--all` | Include info summaries |
 | `doctor` | Name missing tools. Skip, do not install |
 | `schedule` | Hourly user timer; notify when leftovers appear |
-| `unschedule` | Stop the timer |
+| `unschedule` | Stop the timer and remove the user units. Does not run `systemctl disable` |
 
 ## Classification
 

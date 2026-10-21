@@ -29,7 +29,8 @@ def scan(
     else:
         snap = collect_live(proc_root=proc_root, recent_days=recent_days)
     report = classify(snap, checks=wanted, recent_days=recent_days)
-    if not include_ignored:
+    # Fixture scans are hermetic: do not apply the operator's live ignore list.
+    if fixture is None and not include_ignored:
         apply_ignore(report, load_ignored())
     return report
 

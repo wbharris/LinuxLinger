@@ -9,6 +9,7 @@ build/
 .coverage
 htmlcov/
 cases/
+.local/share/linux-linger/
 *.md.bak
 tests/last-results.txt
 tests/last-results.json

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shlex
 import sys
 from pathlib import Path
 
@@ -20,7 +21,7 @@ def write_runner_script(*, notify: bool) -> Path:
     root = data_dir()
     html = root / "last.html"
     cmd = runner_cmd()
-    scan_html = _shell_join(cmd + ["-o", str(html)])
+    scan_html = shlex.join(cmd + ["-o", str(html)])
     path = root / "run.sh"
     lines = [
         "#!/bin/sh",
@@ -31,9 +32,10 @@ def write_runner_script(*, notify: bool) -> Path:
         'if [ "$status" -gt 1 ]; then exit "$status"; fi',
     ]
     if notify and which("notify-send"):
+        msg = f"Leftovers written to {html}"
         lines.append(
             'if [ "$status" -eq 1 ]; then '
-            f'notify-send "LinuxLinger" "Leftovers written to {html}"; fi'
+            f"notify-send {shlex.quote('LinuxLinger')} {shlex.quote(msg)}; fi"
         )
     lines.append('exit "$status"')
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -48,7 +50,7 @@ def install(*, every: str = "hourly", notify: bool = True) -> str:
     oncal = {"hourly": "hourly", "daily": "daily", "weekly": "weekly"}.get(every, "hourly")
     (unit_dir / SERVICE).write_text(
         "[Unit]\nDescription=LinuxLinger live triage\n\n"
-        f"[Service]\nType=oneshot\nExecStart={script}\n",
+        f"[Service]\nType=oneshot\nExecStart={_systemd_exec_start(script)}\n",
         encoding="utf-8",
     )
     (unit_dir / TIMER).write_text(
@@ -66,18 +68,17 @@ def install(*, every: str = "hourly", notify: bool = True) -> str:
 
 def remove() -> str:
     unit_dir = Path.home() / ".config" / "systemd" / "user"
+    run(["systemctl", "--user", "stop", TIMER])
     for name in (TIMER, SERVICE):
         (unit_dir / name).unlink(missing_ok=True)
-    run(["systemctl", "--user", "disable", "--now", TIMER])
+    (unit_dir / "timers.target.wants" / TIMER).unlink(missing_ok=True)
     run(["systemctl", "--user", "daemon-reload"])
     return f"removed systemd --user {TIMER}"
 
 
-def _shell_join(parts: list[str]) -> str:
-    out = []
-    for p in parts:
-        if any(c.isspace() for c in p) or any(c in p for c in '"&|<>'):
-            out.append('"' + p.replace('"', '\\"') + '"')
-        else:
-            out.append(p)
-    return " ".join(out)
+def _systemd_exec_start(path: Path) -> str:
+    """Quote a filesystem path for systemd ExecStart= (not a shell)."""
+    s = str(path)
+    if not s or any(c.isspace() or c in "\"\\'$" for c in s):
+        return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return s

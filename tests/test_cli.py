@@ -57,6 +57,16 @@ def test_clean_fixture_exit_zero(capsys):
     assert "No matching findings." in out
 
 
+def test_unschedule_nonzero_when_stop_fails(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "linux_linger.cli.schedule_remove",
+        lambda: "stop failed: Failed to connect to bus; left units in place",
+    )
+    code = main(["unschedule"])
+    assert code == 1
+    assert "stop failed:" in capsys.readouterr().out
+
+
 def test_unknown_job_args(capsys):
     code = main(["doctor", "--json"])
     assert code == 2

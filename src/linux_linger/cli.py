@@ -59,10 +59,12 @@ def _job(name: str, rest: list[str]) -> int:
         sys.stdout.write(doctor_text())
         return 0
     if name == "schedule":
-        sys.stdout.write(schedule_install(every="hourly", notify=True) + "\n")
-        return 0
-    sys.stdout.write(schedule_remove() + "\n")
-    return 0
+        msg = schedule_install(every="hourly", notify=True)
+        sys.stdout.write(msg + "\n")
+        return 1 if "failed:" in msg else 0
+    msg = schedule_remove()
+    sys.stdout.write(msg + "\n")
+    return 1 if "failed:" in msg else 0
 
 
 def _job_help(name: str) -> str:

@@ -68,17 +68,36 @@ def install(*, every: str = "hourly", notify: bool = True) -> str:
 
 def remove() -> str:
     unit_dir = Path.home() / ".config" / "systemd" / "user"
-    run(["systemctl", "--user", "stop", TIMER])
+    code, out, err = run(["systemctl", "--user", "stop", TIMER])
+    if code != 0 and not _unit_already_idle(out, err):
+        return f"stop failed: {(err or out).strip()}; left units in place"
     for name in (TIMER, SERVICE):
         (unit_dir / name).unlink(missing_ok=True)
     (unit_dir / "timers.target.wants" / TIMER).unlink(missing_ok=True)
-    run(["systemctl", "--user", "daemon-reload"])
+    code, out, err = run(["systemctl", "--user", "daemon-reload"])
+    if code != 0:
+        return f"removed {TIMER}; daemon-reload failed: {(err or out).strip()}"
     return f"removed systemd --user {TIMER}"
 
 
+def _unit_already_idle(out: str, err: str) -> bool:
+    text = f"{err}\n{out}".lower()
+    return any(
+        token in text
+        for token in ("not loaded", "not found", "does not exist", "could not be found")
+    )
+
+
 def _systemd_exec_start(path: Path) -> str:
-    """Quote a filesystem path for systemd ExecStart= (not a shell)."""
+    """Serialize a filesystem path for systemd ExecStart=.
+
+    Double quotes handle spaces. ``$$`` and ``%%`` keep ``$`` and ``%``
+    literal; quoting alone does not disable env or specifier expansion.
+    """
     s = str(path)
-    if not s or any(c.isspace() or c in "\"\\'$" for c in s):
-        return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
-    return s
+    escaped = (
+        s.replace("\\", "\\\\").replace('"', '\\"').replace("$", "$$").replace("%", "%%")
+    )
+    if escaped != s or any(c.isspace() or c in "'" for c in s):
+        return f'"{escaped}"'
+    return escaped

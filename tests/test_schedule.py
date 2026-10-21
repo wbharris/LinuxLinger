@@ -2,6 +2,7 @@ import shlex
 from pathlib import Path
 
 from linux_linger.schedule import _systemd_exec_start, install, remove, write_runner_script
+from linux_linger.util import data_dir
 
 
 def _stub_which(linger=None, notify=None):
@@ -128,6 +129,29 @@ def test_run_sh_quotes_metacharacter_paths(tmp_path, monkeypatch):
     assert notify_argv[0] == "notify-send"
     assert notify_argv[1] == "LinuxLinger"
     assert str(data) in notify_argv[2]
+    assert path.is_file()
+    assert not path.is_symlink()
+    assert path.stat().st_mode & 0o777 == 0o700
+
+
+def test_write_runner_replaces_symlink_without_following(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
+    monkeypatch.setattr(
+        "linux_linger.schedule.which",
+        _stub_which(str(tmp_path / "linux-linger")),
+    )
+    root = data_dir()
+    decoy = tmp_path / "evil.sh"
+    decoy.write_text("#!/bin/sh\necho pwned\n", encoding="utf-8")
+    run_sh = root / "run.sh"
+    run_sh.symlink_to(decoy)
+    path = write_runner_script(notify=False)
+    assert path == run_sh
+    assert path.is_file()
+    assert not path.is_symlink()
+    assert "pwned" not in path.read_text(encoding="utf-8")
+    assert decoy.read_text(encoding="utf-8").startswith("#!/bin/sh")
+    assert path.stat().st_mode & 0o777 == 0o700
 
 
 def test_install_quotes_execstart_and_enables(tmp_path, monkeypatch):

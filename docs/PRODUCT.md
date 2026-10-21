@@ -79,4 +79,4 @@ Kill, `rm`, `systemctl disable`, network isolate, remote IP reputation, fleet SS
 
 ## Cases
 
-JSON/HTML under `cases/` or `$XDG_DATA_HOME/linux-linger/` stay off git. A reboot drops ghosts and open fds. Keep the case.
+JSON/HTML under `cases/` or `$XDG_DATA_HOME/linux-linger/` stay off git. The data directory is created `0700` and owned by the operator; reports, `ignore.txt`, and `run.sh` are owner-only (`0600` / `0700`) and are not written through a symlink. A reboot drops ghosts and open fds. Keep the case.

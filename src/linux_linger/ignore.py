@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from linux_linger.models import Finding, Report
-from linux_linger.util import data_dir
+from linux_linger.util import data_dir, write_private_file
 
 
 def ignore_path() -> Path:
@@ -25,9 +25,10 @@ def load_ignored(path: Path | None = None) -> list[str]:
 
 def save_ignored(ids: list[str], path: Path | None = None) -> Path:
     file = path or ignore_path()
-    file.parent.mkdir(parents=True, exist_ok=True)
+    if path is not None:
+        file.parent.mkdir(parents=True, exist_ok=True)
     unique = sorted(set(ids), key=str.lower)
-    file.write_text("".join(f"{i}\n" for i in unique), encoding="utf-8")
+    write_private_file(file, "".join(f"{i}\n" for i in unique), mode=0o600)
     return file
 
 

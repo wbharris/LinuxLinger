@@ -8,6 +8,7 @@ from linux_linger import __version__
 from linux_linger.doctor import doctor_text
 from linux_linger.report import render_html, render_json, render_markdown, render_text
 from linux_linger.scan import scan
+from linux_linger.util import write_private_file
 from linux_linger.schedule import install as schedule_install
 from linux_linger.schedule import remove as schedule_remove
 
@@ -80,8 +81,16 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     problems_only = not args.all
     fmt = _format(args)
     if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(_render(report, fmt, problems_only=problems_only), encoding="utf-8")
+        try:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            write_private_file(
+                args.output,
+                _render(report, fmt, problems_only=problems_only),
+                mode=0o600,
+            )
+        except PermissionError as exc:
+            sys.stderr.write(f"linux-linger: {exc}\n")
+            return 1
         sys.stderr.write(f"wrote {args.output}\n")
     if args.json:
         sys.stdout.write(render_json(report, problems_only=problems_only))

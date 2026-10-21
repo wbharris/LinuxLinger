@@ -4,7 +4,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from linux_linger.util import data_dir, run, which
+from linux_linger.util import data_dir, run, which, write_private_file
 
 SERVICE = "linux-linger.service"
 TIMER = "linux-linger.timer"
@@ -38,13 +38,15 @@ def write_runner_script(*, notify: bool) -> Path:
             f"notify-send {shlex.quote('LinuxLinger')} {shlex.quote(msg)}; fi"
         )
     lines.append('exit "$status"')
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    path.chmod(0o755)
+    write_private_file(path, "\n".join(lines) + "\n", mode=0o700)
     return path
 
 
 def install(*, every: str = "hourly", notify: bool = True) -> str:
-    script = write_runner_script(notify=notify)
+    try:
+        script = write_runner_script(notify=notify)
+    except PermissionError as exc:
+        return f"schedule failed: {exc}"
     unit_dir = Path.home() / ".config" / "systemd" / "user"
     unit_dir.mkdir(parents=True, exist_ok=True)
     oncal = {"hourly": "hourly", "daily": "daily", "weekly": "weekly"}.get(every, "hourly")

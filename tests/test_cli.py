@@ -44,9 +44,24 @@ def test_html_output_extension(tmp_path, capsys):
     html = dest.read_text(encoding="utf-8")
     assert "<h1>LinuxLinger</h1>" in html
     assert "join" in html
+    assert dest.stat().st_mode & 0o777 == 0o600
     out = capsys.readouterr().out
     assert "LinuxLinger" in out
     assert "<h1>" not in out
+
+
+def test_html_output_replaces_symlink_without_following(tmp_path, capsys):
+    decoy = tmp_path / "decoy.html"
+    decoy.write_text("keep", encoding="utf-8")
+    dest = tmp_path / "case.html"
+    dest.symlink_to(decoy)
+    code = main(["--fixture", str(DATA / "critical.json"), "-o", str(dest)])
+    assert code == 1
+    assert dest.is_file()
+    assert not dest.is_symlink()
+    assert "LinuxLinger" in dest.read_text(encoding="utf-8")
+    assert decoy.read_text(encoding="utf-8") == "keep"
+    capsys.readouterr()
 
 
 def test_clean_fixture_exit_zero(capsys):

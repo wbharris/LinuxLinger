@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import platform
 import shutil
+import stat
 import subprocess
 from pathlib import Path
 
@@ -77,8 +78,65 @@ def endpoint_host(addr: str) -> str:
 
 def data_dir() -> Path:
     base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
-    path = Path(base) / "linux-linger"
-    path.mkdir(parents=True, exist_ok=True)
+    return ensure_private_dir(Path(base) / "linux-linger")
+
+
+def ensure_private_dir(path: Path) -> Path:
+    """Create or tighten a directory to owner-only (0700), user-owned, not a symlink."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _require_safe_parent(path)
+    try:
+        path.mkdir(mode=0o700, exist_ok=True)
+    except FileExistsError:
+        pass
+    st = os.lstat(path)
+    if stat.S_ISLNK(st.st_mode):
+        raise PermissionError(f"{path} is a symlink; refuse to use it as a data directory")
+    if not stat.S_ISDIR(st.st_mode):
+        raise PermissionError(f"{path} is not a directory")
+    if st.st_uid != os.geteuid():
+        raise PermissionError(f"{path} is not owned by the current user")
+    os.chmod(path, 0o700)
+    st = os.lstat(path)
+    if stat.S_IMODE(st.st_mode) & 0o077:
+        raise PermissionError(f"{path} is accessible to other users")
+    return path
+
+
+def _require_safe_parent(path: Path) -> None:
+    parent = path.parent
+    st = os.stat(parent)
+    if st.st_uid == os.geteuid():
+        return
+    if st.st_mode & 0o022:
+        raise PermissionError(
+            f"{parent} is not owned by you and is writable by other users"
+        )
+
+
+def write_private_file(path: Path, text: str, *, mode: int = 0o600) -> Path:
+    """Write ``text`` without following a symlink. Set ``mode`` on the fd."""
+    path = Path(path)
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        st = None
+    if st is not None and stat.S_ISLNK(st.st_mode):
+        os.unlink(path)
+    elif st is not None and not stat.S_ISREG(st.st_mode):
+        raise PermissionError(f"{path} is not a regular file")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW | os.O_CLOEXEC
+    fd = os.open(os.fspath(path), flags, mode)
+    try:
+        os.fchmod(fd, mode)
+        data = text.encode("utf-8")
+        view = memoryview(data)
+        while view:
+            n = os.write(fd, view)
+            view = view[n:]
+    finally:
+        os.close(fd)
     return path
 
 

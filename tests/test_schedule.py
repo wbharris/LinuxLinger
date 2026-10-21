@@ -156,6 +156,32 @@ def test_install_quotes_execstart_and_enables(tmp_path, monkeypatch):
     run_sh = Path(data / "linux-linger" / "run.sh")
     assert run_sh.is_file()
     assert "set +e" in run_sh.read_text(encoding="utf-8")
+    assert "failed:" not in msg
+
+
+def test_install_skips_enable_if_reload_fails(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "share"))
+    monkeypatch.setattr(
+        "linux_linger.schedule.which",
+        _stub_which(str(tmp_path / "linux-linger")),
+    )
+    calls: list[list[str]] = []
+
+    def run(argv, **_kwargs):
+        calls.append(list(argv))
+        if argv[2] == "daemon-reload":
+            return 1, "", "Failed to reload"
+        return 0, "", ""
+
+    monkeypatch.setattr("linux_linger.schedule.run", run)
+    msg = install(every="hourly", notify=False)
+    assert "daemon-reload failed:" in msg
+    assert not any("enable" in argv for argv in calls)
+    timer = home / ".config" / "systemd" / "user" / "linux-linger.timer"
+    assert timer.is_file()
 
 
 def test_systemd_exec_start_escapes_env_and_specifiers(tmp_path):

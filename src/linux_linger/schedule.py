@@ -59,7 +59,9 @@ def install(*, every: str = "hourly", notify: bool = True) -> str:
         "[Install]\nWantedBy=timers.target\n",
         encoding="utf-8",
     )
-    run(["systemctl", "--user", "daemon-reload"])
+    code, out, err = run(["systemctl", "--user", "daemon-reload"])
+    if code != 0:
+        return f"wrote {unit_dir / TIMER}; daemon-reload failed: {(err or out).strip()}"
     code, out, err = run(["systemctl", "--user", "enable", "--now", TIMER])
     if code != 0:
         return f"wrote {unit_dir / TIMER}; enable failed: {(err or out).strip()}"

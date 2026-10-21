@@ -85,7 +85,7 @@ def ensure_private_dir(path: Path) -> Path:
     """Create or tighten a directory to owner-only (0700), user-owned, not a symlink."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    _require_safe_parent(path)
+    _require_safe_ancestors(path)
     try:
         path.mkdir(mode=0o700, exist_ok=True)
     except FileExistsError:
@@ -104,19 +104,34 @@ def ensure_private_dir(path: Path) -> Path:
     return path
 
 
-def _require_safe_parent(path: Path) -> None:
-    """Refuse a parent whose directory entries other users can replace.
+def _require_safe_ancestors(path: Path) -> None:
+    """Refuse any ancestor whose directory entries other users can replace.
 
-    Owner-only and 0755 parents are fine. Group/world-writable parents are
-    not, even when owned by the operator, unless the sticky bit is set so
-    others cannot rename ``linux-linger``.
+    Walks the realpath of ``path.parent`` up to ``/``. Owner-only and 0755
+    directories are fine. Group/world-writable directories are not, even
+    when owned by the operator, unless the sticky bit is set.
     """
-    parent = path.parent
-    st = os.stat(parent)
-    if not stat.S_ISDIR(st.st_mode):
-        raise PermissionError(f"{parent} is not a directory")
-    if st.st_mode & 0o022 and not (st.st_mode & stat.S_ISVTX):
-        raise PermissionError(f"{parent} is writable by other users")
+    current = Path(os.path.realpath(path.parent))
+    seen: set[tuple[int, int]] = set()
+    while True:
+        try:
+            st = os.lstat(current)
+        except OSError as exc:
+            raise PermissionError(f"cannot stat {current}: {exc}") from exc
+        if stat.S_ISLNK(st.st_mode):
+            raise PermissionError(f"{current} is a symlink")
+        if not stat.S_ISDIR(st.st_mode):
+            raise PermissionError(f"{current} is not a directory")
+        if st.st_mode & 0o022 and not (st.st_mode & stat.S_ISVTX):
+            raise PermissionError(f"{current} is writable by other users")
+        ident = (st.st_dev, st.st_ino)
+        if ident in seen:
+            break
+        seen.add(ident)
+        nxt = current.parent
+        if nxt == current:
+            break
+        current = nxt
 
 
 def write_private_file(path: Path, text: str, *, mode: int = 0o600) -> Path:

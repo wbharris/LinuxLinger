@@ -38,6 +38,31 @@ def test_data_dir_rejects_group_writable_parent(tmp_path, monkeypatch):
         data_dir()
 
 
+def test_data_dir_rejects_unsafe_ancestor(tmp_path, monkeypatch):
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    shared.chmod(0o777)
+    xdg = shared / "private"
+    xdg.mkdir()
+    xdg.chmod(0o700)
+    monkeypatch.setenv("XDG_DATA_HOME", str(xdg))
+    with pytest.raises(PermissionError, match="writable by other users"):
+        data_dir()
+
+
+def test_data_dir_allows_sticky_ancestor(tmp_path, monkeypatch):
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    shared.chmod(0o1777)
+    xdg = shared / "private"
+    xdg.mkdir()
+    xdg.chmod(0o700)
+    monkeypatch.setenv("XDG_DATA_HOME", str(xdg))
+    path = data_dir()
+    assert path == xdg / "linux-linger"
+    assert path.stat().st_mode & 0o777 == 0o700
+
+
 def test_data_dir_allows_sticky_shared_parent(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
     tmp_path.chmod(0o1777)

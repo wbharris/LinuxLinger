@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from linux_linger.cli import main
@@ -49,6 +50,42 @@ def test_redact_cmdline_ignores_remotes_in_arguments():
     assert "SECRET" not in finding.detail
     assert "--token=leak" not in finding.detail
     assert "203.0.113.9:443" in finding.detail
+
+
+def test_cli_redact_json_masks_home_in_argv0(tmp_path, capsys):
+    dest = tmp_path / "home-argv0.json"
+    dest.write_text(
+        json.dumps(
+            {
+                "hostname": "box",
+                "os": "Debian",
+                "kernel": "1",
+                "scanned_at": "2026-10-14T00:00:00Z",
+                "ghosts": [
+                    {
+                        "pid": 7,
+                        "exe": "/home/alice/private-tool (deleted)",
+                        "cmdline": "/home/alice/private-tool --token=leak",
+                        "comm": "private-tool",
+                        "uid": 1000,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    code = main(["--fixture", str(dest), "--json", "--redact"])
+    assert code == 1
+    out = capsys.readouterr().out
+    assert "/home/alice" not in out
+    assert "alice" not in out
+    assert "/home/<user>/private-tool" in out
+    assert "--token=leak" not in out
+    payload = json.loads(out)
+    ghost_cmd = payload["snapshot"]["ghosts"][0]["cmdline"]
+    finding_cmd = next(f["cmdline"] for f in payload["findings"] if f["id"] == "ghost:7")
+    assert ghost_cmd == "/home/<user>/private-tool ***"
+    assert finding_cmd == "/home/<user>/private-tool ***"
 
 
 def test_cli_redact_json(capsys):

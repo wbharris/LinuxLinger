@@ -60,9 +60,12 @@ def _redact_home(text: str) -> str:
 
 def _redact_argv(cmd: str) -> str:
     parts = cmd.split()
+    if not parts:
+        return cmd
+    argv0 = _redact_home(parts[0])
     if len(parts) > 1:
-        return parts[0] + " ***"
-    return cmd
+        return argv0 + " ***"
+    return argv0
 
 
 def _redact_linger_name(name: str) -> str:

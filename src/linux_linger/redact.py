@@ -11,7 +11,12 @@ def redact_report(report: Report) -> Report:
     """Mask command-line arguments, home usernames, and linger names in place."""
     for finding in report.findings:
         finding.name = _redact_home(_redact_linger_name(finding.name))
-        finding.detail = _redact_home(_redact_cmdline(finding.detail))
+        if finding.cmdline:
+            redacted = _redact_argv(finding.cmdline)
+            if finding.cmdline in finding.detail:
+                finding.detail = finding.detail.replace(finding.cmdline, redacted, 1)
+            finding.cmdline = redacted
+        finding.detail = _redact_home(finding.detail)
         if finding.path:
             finding.path = _redact_home(finding.path)
         if finding.id.startswith("linger:"):
@@ -31,9 +36,8 @@ def _redact_snapshot(snap: object) -> None:
         if not isinstance(ghost, dict):
             continue
         cmd = str(ghost.get("cmdline") or "")
-        parts = cmd.split()
-        if len(parts) > 1:
-            ghost["cmdline"] = parts[0] + " ***"
+        if cmd:
+            ghost["cmdline"] = _redact_argv(cmd)
         if ghost.get("exe"):
             ghost["exe"] = _redact_home(str(ghost["exe"]))
     for row in snap.get("unlinked") or []:
@@ -54,22 +58,11 @@ def _redact_home(text: str) -> str:
     return HOME_RE.sub(lambda m: m.group("prefix") + "<user>", text)
 
 
-def _redact_cmdline(detail: str) -> str:
-    marker = " cmdline "
-    idx = detail.find(marker)
-    if idx == -1:
-        return detail
-    head = detail[: idx + len(marker)]
-    rest = detail[idx + len(marker) :]
-    split_at = rest.find(" remotes ")
-    if split_at == -1:
-        cmd, tail = rest, ""
-    else:
-        cmd, tail = rest[:split_at], rest[split_at:]
+def _redact_argv(cmd: str) -> str:
     parts = cmd.split()
     if len(parts) > 1:
-        cmd = parts[0] + " ***"
-    return head + cmd + tail
+        return parts[0] + " ***"
+    return cmd
 
 
 def _redact_linger_name(name: str) -> str:

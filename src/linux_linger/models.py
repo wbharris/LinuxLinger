@@ -113,6 +113,7 @@ class Finding:
     path: str | None = None
     remote: str | None = None
     unit: str | None = None
+    cmdline: str = ""
     suggested: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:

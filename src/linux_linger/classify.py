@@ -185,6 +185,7 @@ def _ghosts(ghosts: list[GhostProc], sockets: list[SocketRow]) -> list[Finding]:
                 pid=g.pid,
                 path=g.exe,
                 remote=remote,
+                cmdline=g.cmdline,
                 suggested=_ghost_suggest(g, remotes),
             )
         )
